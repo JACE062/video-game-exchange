@@ -1,170 +1,115 @@
 const express = require("express");
 const app = express();
 const {dal} = require("./../dal/mongoDAL.js");
+const {formatUsersList, formatGamesList, checkForMissingFields} = require("./utils.js");
 const PORT = 5000;
 
 app.use(express.urlencoded({extended : true}));
 app.use(express.json());
 
-let gamesList = [];
-let usersList = [];
 
-app.post("/games", (req, res) => {
-    let body = req.body;
-    console.log("Games POST body: ", body);
-
-    let requiredFields = ["name", "publisher", "year", "system", "condition", "ownerId"];
-    let missingFields = [];
-
-    for (field of requiredFields) {
-        if (!body[field]) {
-            missingFields.push(field);
-        }
-    }
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            error : "Bad Request",
-            message : `Missing required fields: ${missingFields.join(", ")}`
-        });
-    } 
-        
-    let newGame = {
-        name : body.name,
-        publisher : body.publisher,
-        year : body.year,
-        system : body.system,
-        condition : body.condition,
-        ownerId : body.ownerId
-    }
-
-    gamesList.push(newGame);
-
-    res.status(201).json({
-        message : "Game created",
-        data : newGame
-    });
-});
-
-app.put("/games/:id", async (req, res) => {
-    let id = req.params.id;
-    let body = req.body;
-    console.log("Games PUT body: ", body);
-
-    let requiredFields = ["name", "publisher", "year", "system", "condition", "ownerId"];
-    let missingFields = [];
-
-    for (field of requiredFields) {
-        if (!body[field]) {
-            missingFields.push(field);
-        }
-    }
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            error : "Bad Request",
-            message : `Missing required fields: ${missingFields.join(", ")}`
-        });
-    } 
-
-    let updatedGame = {
-        name : body.name,
-        publisher : body.publisher,
-        year : body.year,
-        system : body.system,
-        condition : body.condition,
-        ownerId : body.ownerId
-    }
-    
-    if (await dal.updateGame(updatedGame)) {
-        return res.status(200).json({
-        message : `Game ${id}, full update successfull`,
-        data : game
-        });
-    }
-
-    res.status(404).json({
-        error : "Not Found",
-        message : `Game with id ${id} not found`
-    });
-});
-
-app.patch("/games/:id", (req, res) => {
-    let id = req.params.id;
-    let body = req.body;
-    console.log("Games PATCH body: ", body);
-
-    for (game of gamesList) {
-        if (game.id == id) {
-            game.name = body.name ? body.name : game.name;
-            game.publisher = body.publisher ? body.publisher : game.publisher;
-            game.year = body.year ? body.year : game.year;
-            game.system = body.system ? body.system : game.system;
-            game.condition = body.condition ? body.condition : game.condition;
-            
-            return res.status(200).json({
-                message : `Game ${id}, partial update successfull`,
-                data : game
-            });
-        }
-    }
-
-    res.status(404).json({
-        error : "Not Found",
-        message : `Game with id ${id} not found`
-    });
-});
-
-app.delete("/games/:id", (req, res) => {
-    let id = req.params.id;
-
-    let tempLength = gamesList.length;
-    gamesList = gamesList.filter(game => game.id != id);
-
-    if (gamesList.length < tempLength) {
-        res.status(200).json({message: `Game ${id} deleted successfully`});
-    } else {
-        res.status(404).json({
-            error : "Not Found",
-            message : `Game with id ${id} not found`
-        });
-    }
-});
-
-
+//#region /users endpoints
 app.get("/users", async (req, res) => {
-    let fullDetailUsers = await dal.getAllUsers();
-    let adjustedUsers = [];
-    for (user of fullDetailUsers) {
-        adjustedUser = {
+    let fullDetailUsersList = await dal.getAllUsers();
+    if (fullDetailUsersList.length > 0) {
+        let adjustedUsersList = formatUsersList(fullDetailUsersList);
+
+        res.status(200).json({
+            message : "Users list retrieved successfully",
+            data : adjustedUsersList
+        });
+    } else {
+        res.status(200).json({
+            message : "No Users resgistered",
+            link : {
+                url : `http://localhost:${PORT}/users`,
+                method : "POST"
+            }
+        });
+    }
+});
+
+app.get("/users/:id", async (req, res) => {
+    let id = parseInt(req.params.id);
+    if (isNaN(id)) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `${req.params.id} is not a valid number user id`
+        });
+    }
+
+    let user = await dal.getUserById(id);
+
+    if (user) {
+        let adjustedUser = {
             id : user.id,
             name : user.name,
-            link : {
-                url : `http://localhost:5000/users/${user.id}`,
-                method : "GET"
-            }
+            address : user.address,
+            links : [
+                {
+                    url : `http://localhost:${PORT}/users/${user.id}`,
+                    method : "PATCH"
+                },
+                {
+                    url : `http://localhost:${PORT}/users/${user.id}/games`,
+                    method : "GET"
+                }
+            ]
         }
-        adjustedUsers.push(adjustedUser);
+
+        return res.status(200).json({
+            message : "User retrieved successfully",
+            data : adjustedUser
+        });
+    } else {
+        return res.status(404).json({
+            error : "Not Found",
+            message : `User with id ${id} not found`
+        });
+    }
+});
+
+app.get("/users/:id/games", async (req, res) => {
+    let id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `${req.params.id} is not a valid number user id`
+        });
+    } else if (!(await dal.getUserById(id))) {
+        return res.status(404).json({
+            error : "Not Found",
+            message : `User with id ${id} not found`
+        });
     }
 
-    res.status(200).json({
-        message : "Users list retrieved successfully",
-        data : adjustedUsers
-    });
-});
+    let gamesList = await dal.getGamesByUserId(id);
+
+    if (gamesList && gamesList.length > 0) {
+        let adjustedGamesList = formatGamesList(gamesList);
+
+        res.status(200).json({
+            message : `User ${id} games list retrieved successfully`,
+            data : adjustedGamesList
+        });
+    } else {
+        res.status(200).json({
+            message : `User ${id} games list empty`,
+            link : {
+                url : `http://localhost:${PORT}/games`,
+                method : "POST"
+            }
+        });
+    }
+}); 
 
 app.post("/users", async (req, res) => {
     let body = req.body;
     console.log("Users POST body: ", body);
 
     let requiredFields = ["name", "email", "password", "address"];
-    let missingFields = [];
-
-    for (field of requiredFields) {
-        if (!body[field]) {
-            missingFields.push(field);
-        }
-    }
+    let missingFields = checkForMissingFields(body, requiredFields);
 
     if (missingFields.length > 0) {
         return res.status(400).json({
@@ -180,56 +125,26 @@ app.post("/users", async (req, res) => {
         address : body.address
     }
 
-    let newUserId = await dal.createUser(newUser);
+    result = await dal.createUser(newUser);
 
-    res.status(201).json({
-        message : "User created",
-        data : newUser,
-        links : [
-            {
-                url : `http://localhost:5000/users/${newUserId}`,
-                method : "GET"
-            },
-            {
-                url : `http://localhost:5000/users/${newUserId}`,
-                method : "PATCH"
-            }
-        ]
-    });
-});
+    if (result) {
+        const {_id, ...createdUser} = result;
 
-app.get("/users/:id", async (req, res) => {
-    let id = parseInt(req.params.id);
-    if (isNaN(id)) {
-        return res.status(400).json({
-            error : "Bad Request",
-            message : `${id} is not a valid number user id`
+        res.status(201).json({
+            message : "User created",
+            data : createdUser,
+            links : [
+                {
+                    url : `http://localhost:${PORT}/users/${createdUser.id}`,
+                    method : "GET"
+                },
+                {
+                    url : `http://localhost:${PORT}/users/${createdUser.id}`,
+                    method : "PATCH"
+                }
+            ]
         });
     }
-
-    let user = await dal.getUserById(id);
-
-    let adjustedUser = {
-        id : user.id,
-        name : user.name,
-        address : user.address,
-        links : [
-            {
-                url : `http://localhost:5000/users/${user.id}`,
-                method : "PATCH"
-            },
-            {
-                url : `http://localhost:5000/users/${user.id}/games`,
-                method : "GET"
-            }
-        ]
-    }
-
-    res.status(200).json({
-        message : "User retrieved successfully",
-        data : adjustedUser
-    });
-
 });
 
 app.patch("/users/:id", async (req, res) => {
@@ -261,33 +176,18 @@ app.patch("/users/:id", async (req, res) => {
         });
     }
 
-    
-    let updatedUser;
+    let updateFields = {};
 
-    if (name && address) {
-        updatedUser = {
-            id : id,
-            name : name,
-            address : address
-        }
-    } else if (name) {
-        updatedUser = {
-            id : id,
-            name : name
-        }
-    } else if (address) {
-        updatedUser = {
-            id : id,
-            address : address
-        }
-    }
+    if (name) {updateFields.name = name;}
+    if (address) {updateFields.address = address;}
 
-    if (await dal.updateUser(id, updatedUser)) {
+    let result = await dal.updateUser(id, updateFields);
+
+    if (result) {
         return res.status(200).json({
             message : `User ${id}, partial update successfull`,
-            data : user,
             link : {
-                url : `http://localhost:5000/users/${id}`,
+                url : `http://localhost:${PORT}/users/${id}`,
                 method : "GET"
             }
         });
@@ -304,19 +204,304 @@ app.delete("/users/:id", async (req, res) => {
             error : "Bad Request",
             message : `${req.params.id} is not a valid number user id`
         });
-    } else if ((await dal.getUserById(id)).length == 0) {
+    } else if (!(await dal.getUserById(id))) {
         return res.status(404).json({
-            error : "Not Found",
+            error : "Not Found",    
             message : `User with id ${id} not found`
         });
     }
 
     if (await dal.deleteUser(id)) {
-        res.status(200).json({message: `User ${id} deleted successfully`});
+        res.status(200).json({
+            message: `User ${id} deleted successfully`,
+            link : {
+                url : `http://localhost:${PORT}/users`,
+                method : "POST"
+            }
+        });
     } else {
         console.log("DAL deleteUser unsuccessfull");
     }
 });
+//#endregion
+
+
+//#region /games endpoints
+
+app.get("/games", async (req, res) => {
+    // Query string parameter implementation suggested by Gemini
+    let query = {};
+    if (req.query.name) {
+        query.name = new RegExp(req.query.name, 'i');
+    }  
+    if (req.query.publisher) {
+        query.publisher = new RegExp(req.query.publisher, 'i');        
+    }
+    if (req.query.year && !isNaN(parseInt(req.query.year))) {
+        query.year = parseInt(req.query.year);
+    }
+    if (req.query.system) {
+        query.system = new RegExp(req.query.system, 'i');
+    }
+    if (req.query.condition) {
+        query.condition = new RegExp(req.query.condition, 'i');
+    }
+    // End of Gemini assistance
+
+    let fullDetailGamesList = await dal.getAllGames(query);
+    if (fullDetailGamesList.length > 0) {
+        let adjustedGamesList = formatGamesList(fullDetailGamesList);
+    
+        res.status(200).json({
+            message : "Games list retrieved successfully",
+            data : adjustedGamesList,
+            link : {
+                note : "Query string parameters available for filtering games",
+                url : `http://localhost:${PORT}/games?name=Mario&publisher=Nintendo&year=1996&system=64&condition=mint`,
+                method : "GET"
+            }
+        });
+    } else {
+        res.status(200).json({
+            message : "Games list empty",
+            link : {
+                url : `http://localhost:${PORT}/games`,
+                method : "POST"
+            }
+        });
+    }
+    
+});
+
+app.get("/games/:id", async (req, res) => {
+    let id = parseInt(req.params.id);
+    if (isNaN(id)) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `${req.params.id} is not a valid number game id`
+        });
+    }
+
+    let game = await dal.getGameById(id);
+
+    if (game) {
+        const {_id, ...adjustedGame} = game;
+        adjustedGame.links = [
+            {
+                url : `http://localhost:${PORT}/games/${game.id}`,
+                method : "PUT"
+            },
+            {
+                url : `http://localhost:${PORT}/games/${game.id}`,
+                method : "PATCH"
+            },
+            {
+                url : `http://localhost:${PORT}/users/${game.ownerId}`,
+                method : "GET"
+            },
+            {
+                url : `http://localhost:${PORT}/users/${game.ownerId}/games`,
+                method : "GET"
+            }
+        ];
+        
+        res.status(200).json({
+            message : "Game retrieved successfully",
+            data : adjustedGame
+        });
+    } else {
+        return res.status(404).json({
+            error : "Not Found",
+            message : `Game with id ${id} not found`
+        });
+    }
+});
+
+app.post("/games", async (req, res) => {
+    let body = req.body;
+    console.log("Games POST body: ", body);
+
+    let requiredFields = ["name", "publisher", "year", "system", "condition", "ownerId"];
+    let missingFields = checkForMissingFields(body, requiredFields);
+
+    if (missingFields.length > 0) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `Missing required fields: ${missingFields.join(", ")}`
+        });
+    } 
+        
+    let newGame = {
+        name : body.name,
+        publisher : body.publisher,
+        year : parseInt(body.year),
+        system : body.system,
+        condition : body.condition,
+        ownerId : body.ownerId
+    }
+
+    let result = await dal.createGame(newGame);
+
+    if (result) {
+        const {_id, ...createdGame} = result;
+        res.status(201).json({
+            message : "Game created successfully",
+            data : createdGame,
+            links : [
+                {
+                    url : `http://localhost:${PORT}/games/${createdGame.id}`,
+                    method : "GET"
+                },
+                {
+                    url : `http://localhost:${PORT}/games/${createdGame.id}`,
+                    method : "PUT"
+                },
+                {
+                    url : `http://localhost:${PORT}/games/${createdGame.id}`,
+                    method : "PATCH"
+                }
+            ]
+        });
+    }
+});
+
+app.put("/games/:id", async (req, res) => {
+    let id = parseInt(req.params.id);
+    let body = req.body;
+    console.log("Games PUT body: ", body);
+
+    if (isNaN(id)) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `${req.params.id} is not a valid number game id`
+        });
+    } else if (!(await dal.getGameById(id))) {
+        return res.status(404).json({
+            error : "Not Found",
+            message : `Game with id ${id} not found`
+        });
+    }
+
+    let requiredFields = ["name", "publisher", "year", "system", "condition", "ownerId"];
+    let missingFields = checkForMissingFields(body, requiredFields);
+
+    if (missingFields.length > 0) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `Missing required fields: ${missingFields.join(", ")}`,
+        });
+    } 
+
+    let updateFields = {
+        name : body.name,
+        publisher : body.publisher,
+        year : parseInt(body.year),
+        system : body.system,
+        condition : body.condition,
+        ownerId : body.ownerId
+    }
+
+    let result = await dal.updateGame(id, updateFields);
+
+    if (result) {
+        return res.status(200).json({
+            message : `Game ${id}, full update successfull`,
+            link : {
+                url : `http://localhost:${PORT}/games/${id}`,
+                method : "GET"
+            }
+        });
+    } else {
+        console.log("DAL updateGame unsuccessfull");
+    }
+});
+
+app.patch("/games/:id", async (req, res) => {
+    let id = parseInt(req.params.id);
+    let body = req.body;
+    console.log("Games PATCH body: ", body);
+
+    let name = body.name;
+    let publisher = body.publisher;
+    let year = parseInt(body.year);
+    let system = body.system;
+    let condition = body.condition;
+    let ownerId = body.ownerId;
+
+    if (isNaN(id)) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `${req.params.id} is not a valid number game id`
+        });
+    } else if (!(await dal.getGameById(id))) {
+        return res.status(404).json({
+            error : "Not Found",
+            message : `Game with id ${id} not found`
+        });
+    } else if (!name && !publisher && !year && !system && !condition && !ownerId) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : "No valid fields provided to update"
+        });
+    }
+
+    let updateFields = {};
+
+    if (name) {updateFields.name = name;}
+    if (publisher) {updateFields.publisher = publisher;}
+    if (year) {updateFields.year = year;};
+    if (system) {updateFields.system = system;};
+    if (condition) {updateFields.condition = condition;};
+    if (ownerId) {updateFields.ownerId = ownerId;};
+    
+    let result = await dal.updateGame(id, updateFields);
+
+    if (result) {
+        return res.status(200).json({
+            message : `Game ${id}, partial update successfull`,
+            link : {
+                url : `http://localhost:${PORT}/games/${id}`,
+                method : "GET"
+            }
+        });
+    } else {
+        console.log("DAL updateGame unsuccessfull");
+    }
+});
+
+app.delete("/games/:id", async (req, res) => {
+    let id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+        return res.status(400).json({
+            error : "Bad Request",
+            message : `${req.params.id} is not a valid number game id`
+        });
+    } else if (!(await dal.getGameById(id))) {
+        return res.status(404).json({
+            error : "Not Found",
+            message : `Game with id ${id} not found`
+        });
+    }
+    
+    if (await dal.deleteGame(id)) {
+        res.status(200).json({
+            message: `Game ${id} deleted successfully`,
+            link : {
+                url : `http://localhost:${PORT}/games`,
+                method : "POST"
+            }
+        });
+    } else {
+        console.log("DAL deleteGame unsuccessful");
+    }
+});
+//#endregion
+
+
+
+
+
 
 
 app.listen(PORT, () => {

@@ -56,51 +56,39 @@ let dal = {
             }
 
             await coll.insertOne(newUser);
-            console.log("Added User successfully to database: ", newUser)
-            return newUser.id;
+            console.log("Added User successfully to database: ", newUser);
+            return newUser;
         } finally {
             client.close();
-        }
-    }, 
-    updateUser : async function(id, updatedUser) {
-        console.log("Update User with id: ", id);
-        console.log("Update user user: ", updatedUser);
-        let updateDoc = {};
-        let name = updatedUser.name;
-        let address = updatedUser.address;
+        } 
 
-        if (name && address) {
-            updateDoc.$set = {
-                name : name,
-                address : address
-            }
-        } else if (name) {
-            updateDoc.$set = {
-                name : name
-            }
-        } else {
-            updateDoc.$set = {
-                address : address
-            }
-        }
-        console.log("UpdateDoc:", updateDoc);
+    }, 
+    updateUser : async function(id, updateFields) {
+        console.log("Update User with id: ", id);
+        console.log("Update User fields: ", updateFields);
+        let updateDoc = {
+            $set : updateFields
+        };
+
+        const c = new MongoClient(uri);
         try {
-            await client.connect();
-            let db = client.db("VideoGameExchange");
+            await c.connect();
+            let db = c.db("VideoGameExchange");
             let coll = db.collection("Users");
-            await coll.updateOne({id : id}, updateDoc, {upsert: false});
-            console.log("User updated successfully to database")
-            return true;
+            let result = await coll.updateOne({id : id}, updateDoc, {upsert: false});
+            console.log("User updated successfully to database");
+            return result;
         } finally {
             client.close();
         }
     }, 
     deleteUser : async function(id) {
-        console.log("Delete Class by id: ", id);
+        console.log("Delete User by id: ", id);
 
+        const c = new MongoClient(uri);
         try {
-            await client.connect();
-            let db = client.db("VideoGameExchange");
+            await c.connect();
+            let db = c.db("VideoGameExchange");
             let coll = db.collection("Users");
             await coll.deleteOne({id : id});
             console.log("User deleted successfully from database");
@@ -108,35 +96,115 @@ let dal = {
         } catch {
             return false;
         } finally {
+            c.close();
+        }
+    }, 
+    // Query implementation done partially by Gemini
+    getAllGames : async function(query) {
+        console.log("Get all Games");
+        // if (Object.keys(query).length != 0) {
+            console.log("Search query: ", query);
+        // }
+        let games = [];
+        try {
+            await client.connect();
+            let db = client.db("VideoGameExchange");
+            let coll = db.collection("Games");
+            games = await coll.find(query).toArray();
+        } finally {
+            client.close();
+        }
+        console.log("Get all Games results: ", games);
+        return games;
+    }, 
+    // End of AI assistance
+    getGameById : async function(id) {
+        console.log("Get Game by id: ", id);
+        let game;
+        try {
+            await client.connect();
+            let db = client.db("VideoGameExchange");
+            let coll = db.collection("Games");
+            game = await coll.findOne({id : id});
+            console.log("Get game by id successfull: ", game);
+        } finally {
+            client.close();
+        }
+        console.log("Get Games by id results: ", game);
+        return game;
+    }, 
+    getGamesByUserId : async function(userId) {
+        console.log("Get Games by userId: ", userId);
+        let games = [];
+        
+        const c = new MongoClient(uri);
+        try {
+            await c.connect();
+            let db = c.db("VideoGameExchange");
+            let coll = db.collection("Games");
+            games = await coll.find({ownerId : userId}).toArray();
+        } finally {
+            c.close();
+        }
+        console.log("Get Games by userId results: ", games);
+        return games;
+    }, 
+    createGame : async function(newGame) {
+        console.log("Create Game");
+        try {
+            await client.connect();
+            let db = client.db("VideoGameExchange");
+            let coll = db.collection("Games");
+            let allGames = await coll.find().toArray();
+            let lastGame = allGames[allGames.length-1];
+            if(lastGame) {
+                newGame.id = lastGame.id + 1;
+            } else {
+                newGame.id = 1;
+            }
+
+            await coll.insertOne(newGame);
+            console.log("Added Game successfully to database: ", newGame);
+            return newGame;
+        } finally {
             client.close();
         }
     }, 
-    getAllGames : async function() {
+    updateGame : async function(id, updateFields) {
+        console.log("Update Game with id: ", id);
+        console.log("Update Game fields: ", updateFields);
+        let updateDoc = {
+            $set : updateFields
+        };
 
-    }, 
-    getGameById : async function(id) {
-
-    }, 
-    getGamesByName : async function(name) {
-
-    }, 
-    getGamesByPublisher : async function(publisher) {
-
-    }, 
-    getGamesBySystem : async function(system) {
-
-    }, 
-    getGamesByUser : async function(userId) {
-
-    }, 
-    createGame : async function(newGame) {
-
-    }, 
-    updateGame : async function(id, updatedGame) {
-
+        const c = new MongoClient(uri);
+        try {
+            await c.connect();
+            let db = c.db("VideoGameExchange");
+            let coll = db.collection("Games");
+            let result = await coll.updateOne({id : id}, updateDoc, {upsert: false});
+            console.log("Game updated successfully in database");
+            return result;
+        } finally {
+            client.close();
+        }
     }, 
     deleteGame : async function(id) {
+        console.log("Delete Game by id: ", id);
 
+        const c = new MongoClient(uri);
+        try {
+            await c.connect();
+            let db = c.db("VideoGameExchange");
+            let coll = db.collection("Games");
+            await coll.deleteOne({id : id});
+            console.log("Game deleted successfully from database");
+            return true;
+        } catch {
+            return false;
+        } finally {
+            c.close();
+        }
     }, 
 }
 
