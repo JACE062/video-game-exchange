@@ -19,8 +19,8 @@ app.get("/users", async (req, res) => {
             data : adjustedUsersList
         });
     } else {
-        res.status(200).json({
-            message : "No Users resgistered",
+        res.status(404).json({
+            message : "No Users found",
             link : {
                 url : `http://localhost:${PORT}/users`,
                 method : "POST"
@@ -45,16 +45,10 @@ app.get("/users/:id", async (req, res) => {
             id : user.id,
             name : user.name,
             address : user.address,
-            links : [
-                {
-                    url : `http://localhost:${PORT}/users/${user.id}`,
-                    method : "PATCH"
-                },
-                {
-                    url : `http://localhost:${PORT}/users/${user.id}/games`,
-                    method : "GET"
-                }
-            ]
+            links : {
+                url : `http://localhost:${PORT}/users/${user.id}/games`,
+                method : "GET"
+            }
         }
 
         return res.status(200).json({
@@ -133,16 +127,10 @@ app.post("/users", async (req, res) => {
         res.status(201).json({
             message : "User created",
             data : createdUser,
-            links : [
-                {
-                    url : `http://localhost:${PORT}/users/${createdUser.id}`,
-                    method : "GET"
-                },
-                {
-                    url : `http://localhost:${PORT}/users/${createdUser.id}`,
-                    method : "PATCH"
-                }
-            ]
+            link : {
+                url : `http://localhost:${PORT}/users/${createdUser.id}`,
+                method : "GET"
+            }
         });
     }
 });
@@ -288,14 +276,6 @@ app.get("/games/:id", async (req, res) => {
         const {_id, ...adjustedGame} = game;
         adjustedGame.links = [
             {
-                url : `http://localhost:${PORT}/games/${game.id}`,
-                method : "PUT"
-            },
-            {
-                url : `http://localhost:${PORT}/games/${game.id}`,
-                method : "PATCH"
-            },
-            {
                 url : `http://localhost:${PORT}/users/${game.ownerId}`,
                 method : "GET"
             },
@@ -347,20 +327,10 @@ app.post("/games", async (req, res) => {
         res.status(201).json({
             message : "Game created successfully",
             data : createdGame,
-            links : [
-                {
+            link : {
                     url : `http://localhost:${PORT}/games/${createdGame.id}`,
                     method : "GET"
-                },
-                {
-                    url : `http://localhost:${PORT}/games/${createdGame.id}`,
-                    method : "PUT"
-                },
-                {
-                    url : `http://localhost:${PORT}/games/${createdGame.id}`,
-                    method : "PATCH"
-                }
-            ]
+            }
         });
     }
 });

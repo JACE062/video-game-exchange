@@ -20,11 +20,11 @@
   "paths": {
     "/users": {
       "get": {
-        "description": "Get Users in the API",
+        "description": "Get a list of Users registered in the Exchange",
         "operationId": "getUsers",
         "responses": {
           "200": {
-            "description": "Users retrieved successfully",
+            "description": "Users Retrieved Successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -39,30 +39,48 @@
               "GetUserByUserId": {
                 "operationId": "getUser",
                 "parameters": {
-                  "id": "$response.body#/id"
+                  "id": "$id"
                 },
-                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /users/{id}`."
+                "description": "The `id` value returned in each of the users in the response can be used as the `id` parameter in `GET /users/{id}`."
+              }
+            }
+          },
+          "404": {
+            "description": "No Users Found",
+            "links": {
+              "AddUser": {
+                "operationId": "addUser",
+                "description": "A User can be registered to the Exchange using `POST /users`."
               }
             }
           }
         }
       },
       "post": {
-        "description": "",
+        "description": "Register a new User to the Exchange",
         "operationId": "addUser",
         "responses": {
           "201": {
-            "description": "Created",
+            "description": "User Created Successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/User"
                 }
               }
+            },
+            "links" : {
+              "GetUserByUserId": {
+                "operationId": "getUser",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /users/{id}`."
+              }
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Missing Required Fields"
           }
         },
         "requestBody": {
@@ -78,7 +96,7 @@
     },
     "/users/{id}": {
       "get": {
-        "description": "",
+        "description": "Returns a User by id",
         "operationId": "getUser",
         "parameters": [
           {
@@ -92,25 +110,34 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "User Retrieved Successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/User"
                 }
               }
+            },
+            "links" : {
+              "GetUserGames": {
+                "operationId": "getUserGames",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /users/{id}/games`."
+              }
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid User Id"
           },
           "404": {
-            "description": "Not Found"
+            "description": "User Not Found"
           }
         }
       },
       "patch": {
-        "description": "",
+        "description": "Update allowed fields on a User",
         "operationId": "updateUser",
         "parameters": [
           {
@@ -124,13 +151,22 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "User Update Successful",
+            "links" : {
+              "GetUserByUserId": {
+                "operationId": "getUser",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /users/{id}`."
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
           },
           "404": {
-            "description": "Not Found"
+            "description": "User Not Found"
           }
         },
         "requestBody": {
@@ -144,7 +180,7 @@
         }
       },
       "delete": {
-        "description": "",
+        "description": "Delete a User by id",
         "operationId": "deleteUser",
         "parameters": [
           {
@@ -158,20 +194,26 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "User Deleted Successfully",
+            "links": {
+              "AddUser": {
+                "operationId": "addUser",
+                "description": "A User can be registered to the Exchange using `POST /users`."
+              }
+            }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid User Id"
           },
           "404": {
-            "description": "Not Found"
+            "description": "User Not Found"
           }
         }
       }
     },
     "/users/{id}/games": {
       "get": {
-        "description": "",
+        "description": "Retrive the list of Games owned by a User",
         "operationId": "getUserGames",
         "parameters": [
           {
@@ -185,20 +227,39 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Games List Retrieved Successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type" : "array",
+                  "items" : {
+                    "$ref": "#/components/schemas/Game"
+                  }
+                }
+              }
+            },
+            "links": {
+              "GetGameByGameId": {
+                "operationId": "getGame",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in each of the games in the response can be used as the `id` parameter in `GET /games/{id}`."
+              }
+            }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid User Id"
           },
           "404": {
-            "description": "Not Found"
+            "description": "User Not Found"
           }
         }
       }
     },
     "/games": {
       "get": {
-        "description": "",
+        "description": "Get Games listed on the Exchange",
         "operationId": "getGames",
         "parameters": [
           {
@@ -239,26 +300,54 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Games Retrieved Successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type" : "array",
+                  "items" : {
+                    "$ref": "#/components/schemas/Game"
+                  }
+                }
+              }
+            },
+            "links": {
+              "GetGameByGameId": {
+                "operationId": "getGame",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in each of the games in the response can be used as the `id` parameter in `GET /games/{id}`."
+              }
+            }
           }
         }
       },
       "post": {
-        "description": "",
+        "description": "Add a Game to the Exchange",
         "operationId": "addGame",
         "responses": {
           "201": {
-            "description": "Created",
+            "description": "Game Created Successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Game"
                 }
               }
+            },
+            "links": {
+              "GetGameByGameId": {
+                "operationId": "getGame",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /games/{id}`."
+              }
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Missing Required Fields"
           }
         },
         "requestBody": {
@@ -274,7 +363,7 @@
     },
     "/games/{id}": {
       "get": {
-        "description": "",
+        "description": "Returns a Game by id ",
         "operationId": "getGame",
         "parameters": [
           {
@@ -288,25 +377,41 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Game Retrieved Successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Game"
                 }
               }
+            },
+            "links": {
+              "GetUserByUserId": {
+                "operationId": "getUser",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `ownerId` value returned in the response can be used as the `id` parameter in `GET /users/{id}`."
+              },
+              "GetGamesByUser": {
+                "operationId": "getUserGames",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `ownerId` value returned in the response can be used as the `id` parameter in `GET /users/{id}/games`."
+              }
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid Game Id"
           },
           "404": {
-            "description": "Not Found"
+            "description": "Game Not Found"
           }
         }
       },
       "put": {
-        "description": "",
+        "description": "Updates all the fields of a Game",
         "operationId": "fullUpdateGame",
         "parameters": [
           {
@@ -320,12 +425,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Game"
-                }
+            "description": "Full Game Update Successful",
+            "links": {
+              "GetGameByGameId": {
+                "operationId": "getGame",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /games/{id}`."
               }
             }
           },
@@ -333,7 +440,7 @@
             "description": "Bad Request"
           },
           "404": {
-            "description": "Not Found"
+            "description": "Game Not Found"
           }
         },
         "requestBody": {
@@ -347,7 +454,7 @@
         }
       },
       "patch": {
-        "description": "",
+        "description": "Updates specified fields of a Game",
         "operationId": "partialUpdateGame",
         "parameters": [
           {
@@ -361,47 +468,36 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Partial Game Update Successful",
+            "links": {
+              "GetGameByGameId": {
+                "operationId": "getGame",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /games/{id}`."
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
           },
           "404": {
-            "description": "Not Found"
+            "description": "Game Not Found"
           }
         },
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "publisher": {
-                    "example": "any"
-                  },
-                  "year": {
-                    "example": "any"
-                  },
-                  "system": {
-                    "example": "any"
-                  },
-                  "condition": {
-                    "example": "any"
-                  },
-                  "ownerId": {
-                    "example": "any"
-                  }
-                }
+                "$ref": "#/components/schemas/Game"
               }
             }
           }
         }
       },
       "delete": {
-        "description": "",
+        "description": "Delete a Game by id",
         "operationId": "deleteGame",
         "parameters": [
           {
@@ -409,19 +505,25 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Game Deleted Successfully",
+            "links": {
+              "AddGame": {
+                "operationId": "addGame",
+                "description": "A Game can be added to the Exchange using `POST /games`."
+              }
+            }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid Game Id"
           },
           "404": {
-            "description": "Not Found"
+            "description": "Game Not Found"
           }
         }
       }
