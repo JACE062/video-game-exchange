@@ -1,8 +1,9 @@
 const express = require("express");
 const app = express();
-const {dal} = require("./../dal/mongoDAL.js");
+const {dal} = require("./dal/mongoDAL.js");
 const {formatUsersList, formatGamesList, checkForMissingFields} = require("./utils.js");
-const PORT = 5000;
+require('dotenv').config();
+const PORT = process.env.PORT;
 
 app.use(express.urlencoded({extended : true}));
 app.use(express.json());
