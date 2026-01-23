@@ -1,3 +1,6 @@
+require('dotenv').config();
+const PORT = process.env.PORT;
+
 let formatUsersList = function (usersList) {
     let adjustedUsersList = [];
     for (user of usersList) {
@@ -5,7 +8,7 @@ let formatUsersList = function (usersList) {
             id : user.id,
             name : user.name,
             link : {
-                url : `http://localhost:5000/users/${user.id}`,
+                url : `http://localhost:${PORT}/users/${user.id}`,
                 method : "GET"
             }
         }
@@ -23,7 +26,7 @@ let formatGamesList = function (gamesList) {
             year : game.year,
             ownerId : game.ownerId,
             link : {
-                url : `http://localhost:5000/games/${game.id}`, 
+                url : `http://localhost:${PORT}/games/${game.id}`, 
                 method : "GET"
             }
         } 
