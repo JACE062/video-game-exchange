@@ -1,6 +1,6 @@
 services:
   api:
-    build: ./video-game-exchange
+    build: ./api
     pull_policy: build
     networks:
       - distributed-network
