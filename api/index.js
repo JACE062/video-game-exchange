@@ -3,7 +3,8 @@ const app = express();
 const {dal} = require("./dal/mongoDAL.js");
 const {formatUsersList, formatGamesList, checkForMissingFields} = require("./utils.js");
 require('dotenv').config();
-const PORT = process.env.PORT;
+const INTERNAL_PORT = process.env.INTERNAL_PORT;
+const PROXY_PORT = process.env.PROXY_PORT;
 
 app.use(express.urlencoded({extended : true}));
 app.use(express.json());
@@ -23,7 +24,7 @@ app.get("/users", async (req, res) => {
         res.status(404).json({
             message : "No Users found",
             link : {
-                url : `http://localhost:${PORT}/users`,
+                url : `http://localhost:${PROXY_PORT}/users`,
                 method : "POST"
             }
         });
@@ -47,7 +48,7 @@ app.get("/users/:id", async (req, res) => {
             name : user.name,
             address : user.address,
             links : {
-                url : `http://localhost:${PORT}/users/${user.id}/games`,
+                url : `http://localhost:${PROXY_PORT}/users/${user.id}/games`,
                 method : "GET"
             }
         }
@@ -92,7 +93,7 @@ app.get("/users/:id/games", async (req, res) => {
         res.status(200).json({
             message : `User ${id} games list empty`,
             link : {
-                url : `http://localhost:${PORT}/games`,
+                url : `http://localhost:${PROXY_PORT}/games`,
                 method : "POST"
             }
         });
@@ -129,7 +130,7 @@ app.post("/users", async (req, res) => {
             message : "User created",
             data : createdUser,
             link : {
-                url : `http://localhost:${PORT}/users/${createdUser.id}`,
+                url : `http://localhost:${PROXY_PORT}/users/${createdUser.id}`,
                 method : "GET"
             }
         });
@@ -176,7 +177,7 @@ app.patch("/users/:id", async (req, res) => {
         return res.status(200).json({
             message : `User ${id}, partial update successfull`,
             link : {
-                url : `http://localhost:${PORT}/users/${id}`,
+                url : `http://localhost:${PROXY_PORT}/users/${id}`,
                 method : "GET"
             }
         });
@@ -204,7 +205,7 @@ app.delete("/users/:id", async (req, res) => {
         res.status(200).json({
             message: `User ${id} deleted successfully`,
             link : {
-                url : `http://localhost:${PORT}/users`,
+                url : `http://localhost:${PROXY_PORT}/users`,
                 method : "POST"
             }
         });
@@ -246,7 +247,7 @@ app.get("/games", async (req, res) => {
             data : adjustedGamesList,
             link : {
                 note : "Query string parameters available for filtering games",
-                url : `http://localhost:${PORT}/games?name=Mario&publisher=Nintendo&year=1996&system=64&condition=mint`,
+                url : `http://localhost:${PROXY_PORT}/games?name=Mario&publisher=Nintendo&year=1996&system=64&condition=mint`,
                 method : "GET"
             }
         });
@@ -254,7 +255,7 @@ app.get("/games", async (req, res) => {
         res.status(200).json({
             message : "Games list empty",
             link : {
-                url : `http://localhost:${PORT}/games`,
+                url : `http://localhost:${PROXY_PORT}/games`,
                 method : "POST"
             }
         });
@@ -277,11 +278,11 @@ app.get("/games/:id", async (req, res) => {
         const {_id, ...adjustedGame} = game;
         adjustedGame.links = [
             {
-                url : `http://localhost:${PORT}/users/${game.ownerId}`,
+                url : `http://localhost:${PROXY_PORT}/users/${game.ownerId}`,
                 method : "GET"
             },
             {
-                url : `http://localhost:${PORT}/users/${game.ownerId}/games`,
+                url : `http://localhost:${PROXY_PORT}/users/${game.ownerId}/games`,
                 method : "GET"
             }
         ];
@@ -329,7 +330,7 @@ app.post("/games", async (req, res) => {
             message : "Game created successfully",
             data : createdGame,
             link : {
-                    url : `http://localhost:${PORT}/games/${createdGame.id}`,
+                    url : `http://localhost:${PROXY_PORT}/games/${createdGame.id}`,
                     method : "GET"
             }
         });
@@ -378,7 +379,7 @@ app.put("/games/:id", async (req, res) => {
         return res.status(200).json({
             message : `Game ${id}, full update successfull`,
             link : {
-                url : `http://localhost:${PORT}/games/${id}`,
+                url : `http://localhost:${PROXY_PORT}/games/${id}`,
                 method : "GET"
             }
         });
@@ -431,7 +432,7 @@ app.patch("/games/:id", async (req, res) => {
         return res.status(200).json({
             message : `Game ${id}, partial update successfull`,
             link : {
-                url : `http://localhost:${PORT}/games/${id}`,
+                url : `http://localhost:${PROXY_PORT}/games/${id}`,
                 method : "GET"
             }
         });
@@ -459,7 +460,7 @@ app.delete("/games/:id", async (req, res) => {
         res.status(200).json({
             message: `Game ${id} deleted successfully`,
             link : {
-                url : `http://localhost:${PORT}/games`,
+                url : `http://localhost:${PROXY_PORT}/games`,
                 method : "POST"
             }
         });
@@ -475,8 +476,8 @@ app.delete("/games/:id", async (req, res) => {
 
 
 
-app.listen(PORT, () => {
-    console.log("Server listening at http://localhost:"+PORT);
+app.listen(INTERNAL_PORT, () => {
+    console.log("Server listening at http://localhost:"+INTERNAL_PORT);
 });
 
 

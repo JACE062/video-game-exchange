@@ -1,5 +1,5 @@
 require('dotenv').config();
-const PORT = process.env.PORT;
+const PROXY_PORT = process.env.PROXY_PORT;
 
 let formatUsersList = function (usersList) {
     let adjustedUsersList = [];
@@ -8,7 +8,7 @@ let formatUsersList = function (usersList) {
             id : user.id,
             name : user.name,
             link : {
-                url : `http://localhost:${PORT}/users/${user.id}`,
+                url : `http://localhost:${PROXY_PORT}/users/${user.id}`,
                 method : "GET"
             }
         }
@@ -26,7 +26,7 @@ let formatGamesList = function (gamesList) {
             year : game.year,
             ownerId : game.ownerId,
             link : {
-                url : `http://localhost:${PORT}/games/${game.id}`, 
+                url : `http://localhost:${PROXY_PORT}/games/${game.id}`, 
                 method : "GET"
             }
         } 

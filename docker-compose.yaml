@@ -1,0 +1,25 @@
+services:
+  api:
+    build: ./video-game-exchange
+    pull_policy: build
+    networks:
+      - distributed-network
+    deploy: 
+      replicas: 3
+
+  web:
+    container_name: nginx-server
+    image: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports: 
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - distributed-network 
+
+networks:
+  distributed-network:
+
+
