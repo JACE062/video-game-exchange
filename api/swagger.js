@@ -23,7 +23,7 @@ const doc = {
   components: {}
 };
 
-const outputFile = './api-doc.json';
+const outputFile = './openapi-doc.json';
 const routes = ['./index.js'];
 
 /* NOTE: If you are using the express Router, you must pass in the 'routes' only the 

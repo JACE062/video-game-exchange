@@ -715,18 +715,6 @@ app.post("/trades", async (req, res) => {
 });
 
 
-// Trade schema:
-// let trade = { 
-//     id : 1,
-//     senderId : 1,
-//     senderGameId : 4,
-//     receiverId : 2,
-//     receiverGameId : 5,
-//     status : "Pending" | "Accepted" | "Refused",
-//     unixTimestamp : Date.now(),
-//     created : (date = new Date())+"date.getMonth()+1:date.getDate():date.getFullYear(): date.getHours():date.getMinutes()",
-// }
-
 // PATCH /trades/:id - update status of a trade -> only from pending to accepted/rejected, finalized trades cannot change state
 app.patch("/trades/:id", async (req, res) => {
     let id = parseInt(req.params.id);

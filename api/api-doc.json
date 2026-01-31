@@ -296,6 +296,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "ownerId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -527,7 +534,232 @@
           }
         }
       }
+    },
+    "/trades": {
+      "get": {
+        "description": "Get Trade offers on the Exchange",
+        "operationId": "getTrades",
+        "parameters": [
+          {
+            "name": "senderId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "receiverId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trades Retrieved Successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type" : "array",
+                  "items" : {
+                    "$ref": "#/components/schemas/Trade"
+                  }
+                }
+              }
+            },
+            "links": {
+              "GetTradeByTradeId": {
+                "operationId": "getTrade",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in each of the trades in the response can be used as the `id` parameter in `GET /trades/{id}`."
+              }
+            }
+          },
+          "400": {
+            "description": "Query paramaters must include either senderId or receiverId"
+          }
+        }
+      },
+      "post": {
+        "description": "Make a Trade offer on the Exchange",
+        "operationId" : "addTrade",
+        "responses": {
+          "201": {
+            "description": "Trade Created Successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trade"
+                }
+              }
+            },
+            "links": {
+              "GetTrdeByTradeId": {
+                "operationId": "getTrade",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /trades/{id}`."
+              }
+            }
+          },
+          "400": {
+            "description": "Missing Required Fields"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Trade"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trades/{id}": {
+      "get": {
+        "description": "Returns a Trade by id ",
+        "operationId" : "getTrade",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Game Retrieved Successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Game"
+                }
+              }
+            },
+            "links": {
+              "UpdateTrade": {
+                "operationId": "updateTrade",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The id value returned in the response can be used as the `id` parameter in `PATCH /trades/{id}`."
+              },
+              "GetUserByUserId": {
+                "operationId": "getUser",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `senderId` or `receiverId` values returned in the response can be used as the `id` parameter in `GET /users/{id}`."
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Trade Id"
+          },
+          "404": {
+            "description": "Trade Not Found"
+          }
+        }
+      },
+      "patch": {
+        "description": "Updates the status field of a Trade",
+        "operationId" : "updateTrade",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trade Status Update Successful",
+            "links": {
+              "GetTradeByTradeId": {
+                "operationId": "getTrade",
+                "parameters": {
+                  "id": "$id"
+                },
+                "description": "The `id` value returned in the response can be used as the `id` parameter in `GET /trades/{id}`."
+              }
+            }
+          },
+          "400": {
+            "description": "Only Status Field Can Be Updated"
+          },
+          "404": {
+            "description": "Trade Not Found"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Trade"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a Trade by id",
+        "operationId": "deleteTrade",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trade Deleted Successfully",
+            "links": {
+              "AddTrade": {
+                "operationId": "addTrade",
+                "description": "A Trade can be added to the Exchange using `POST /trades`."
+              }
+            }
+          },
+          "400": {
+            "description": "Only Pending Trades Can Be Canceled"
+          },
+          "404": {
+            "description": "Trade Not Found"
+          }
+        }
+      }
     }
+
   },
   "components": {
     "schemas": {
@@ -586,6 +818,27 @@
           "address": {
             "type": "string",
             "example": "1 Main Street City, State"
+          }
+        }
+      },
+      "Trade" : {
+        "type": "object",
+        "properties": {
+          "senderId": {
+            "type": "integer",
+            "example": 1
+          },
+          "senderGameId": {
+            "type": "integer",
+            "example": 2
+          },
+          "receiverId": {
+            "type": "integer",
+            "example": 3
+          },
+          "receiverGameId": {
+            "type": "integer",
+            "example": 4
           }
         }
       }
