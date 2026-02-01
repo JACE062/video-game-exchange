@@ -768,12 +768,12 @@ app.patch("/trades/:id", async (req, res) => {
             let game1UpdateField = {
                 ownerId : trade.receiverId
             };
-            await updateGame(senderGameId, game1UpdateField);
+            await dal.updateGame(trade.senderGameId, game1UpdateField);
 
             let game2UpdateField = {
                 ownerId : trade.senderId
             };
-            await updateGame(receiverGameId, game2UpdateField);
+            await dal.updateGame(trade.receiverGameId, game2UpdateField);
         }
         return res.status(200).json({
             message : `Trade ${id}, status update successfull`,
