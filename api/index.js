@@ -1,8 +1,21 @@
 const express = require("express");
 const app = express();
+
+const { Kafka } = require("kafkajs");
+const kafka = new Kafka({ clientId: "api", 
+    brokers: ["broker:29092"],
+    connectionTimeout: 3000, 
+    retry: {
+        initialRetryTime: 1000,
+        retries: 15
+    }
+    });
+const producer = kafka.producer();
+
 const {dal, connectToDb, closeDb} = require("./dal/mongoDAL.js");
 const {formatUsersList, formatGamesList, formatTradesList, checkForMissingFields, checkForNaNFields, checkForUnallowedFields} = require("./utils.js");
 require('dotenv').config();
+
 const INTERNAL_PORT = process.env.INTERNAL_PORT;
 const PROXY_PORT = process.env.PROXY_PORT;
 
@@ -46,6 +59,7 @@ app.get("/users/:id", async (req, res) => {
         let adjustedUser = {
             id : user.id,
             name : user.name,
+            email : user.email,
             address : user.address,
             links : {
                 url : `http://localhost:${PROXY_PORT}/users/${user.id}/games`,
@@ -145,25 +159,28 @@ app.patch("/users/:id", async (req, res) => {
 
     let name = body.name;
     let address = body.address;
+    let password = body.password;
     if (isNaN(id)) {
         return res.status(400).json({
             error : "Bad Request",
             message : `${req.params.id} is not a valid number user id`
         });
-    } else if (!(await dal.getUserById(id))) {
+    }
+    let user = await dal.getUserById(id);
+    if (!user) {
         return res.status(404).json({
             error : "Not Found",
             message : `User with id ${id} not found`
         });
-    } else if (body.email || body.password) {
+    } else if (body.email) {
         return res.status(400).json({
             error : "Bad Request",
-            message : "Email or password cannot be updated, only name or address can"
+            message : "Email cannot be updated, only name, password or address can"
         });
-    } else if (!name && !address) {
+    } else if (!name && !address && !password) {
         return res.status(400).json({
             error : "Bad Request",
-            message : "No name or address provided to update"
+            message : "No name, address, or password provided to update"
         });
     }
 
@@ -171,10 +188,28 @@ app.patch("/users/:id", async (req, res) => {
 
     if (name) {updateFields.name = name;}
     if (address) {updateFields.address = address;}
+    if (password) {updateFields.password = password;}
 
     let result = await dal.updateUser(id, updateFields);
 
     if (result) {
+        if (password) {
+            let messageDataObj = {
+                user : {...user, name : name ? name : user.name, address : address ? address : user.address}
+            }
+            
+            await producer.send({
+                topic: 'Users',
+                messages: [
+                    { 
+                        key: "password-updated", 
+                        value: JSON.stringify(messageDataObj) 
+                    }
+                ]
+            })
+        }
+
+
         return res.status(200).json({
             message : `User ${id}, partial update successfull`,
             link : {
@@ -702,6 +737,23 @@ app.post("/trades", async (req, res) => {
     let result = await dal.createTrade(newTrade);
 
     if (result) {
+        let messageDataObj = {
+            tradeId : result.id,
+            sender : sender,
+            senderGame : senderGame,
+            receiver : receiver,
+            receiverGame : receiverGame
+        }
+        await producer.send({
+            topic: 'Trades',
+            messages: [
+                { 
+                    key: "trade-created", 
+                    value: JSON.stringify(messageDataObj) 
+                }
+            ]
+        })
+
         const {_id, ...createdTrade} = result;
         res.status(201).json({
             message : "Trade created successfully",
@@ -775,6 +827,30 @@ app.patch("/trades/:id", async (req, res) => {
             };
             await dal.updateGame(trade.receiverGameId, game2UpdateField);
         }
+
+        let sender = await dal.getUserById(trade.senderId);
+        let senderGame = await dal.getGameById(trade.senderGameId); 
+        let receiver = await dal.getUserById(trade.receiverId);
+        let receiverGame = await dal.getGameById(trade.receiverGameId);
+
+        let messageDataObj = {
+            tradeId : trade.id,
+            sender : sender,
+            senderGame : senderGame,
+            receiver : receiver,
+            receiverGame : receiverGame
+        }
+
+        await producer.send({
+            topic: 'Trades',
+            messages: [
+                { 
+                    key: status === "Accepted" ? "trade-accepted" : "trade-rejected", 
+                    value: JSON.stringify(messageDataObj) 
+                }
+            ]
+        })
+        
         return res.status(200).json({
             message : `Trade ${id}, status update successfull`,
             link : {
@@ -832,13 +908,16 @@ app.delete("/trades/:id", async (req, res) => {
 //TODO:
 // This will be added next Lab
 // We need to be able to send a user notifications when they receive an offer for a game ( sending them emails in this case )
-// Message streams w/ Kafka 
-// Non-linear behaviors (no longer just following one event through from start to end)
-// Message stream houses our events, and we can have services publish events to the message stream, and other services can subscribe to listen for a certain type of events in the stream
+
 // Our API's are doing too much, and so we need to extract portions out into different services.
 // The notifications is one example, as this is not a concern that the API should handle
 // Excercise to do before Monday: Get a Kafka container up and running
 
+
+// TODO:
+// Add producer sending messages for user password changes
+// Change user patching to allow for password changes - currently doesn't work
+// 
 
 
 //DB connection handling improved with Gemini
@@ -860,7 +939,8 @@ process.once('SIGUSR2', async () => {
     process.kill(process.pid, 'SIGUSR2'); 
 });
 
-connectToDb().then(() => {
+connectToDb().then(async () => {
+    await producer.connect();
     app.listen(INTERNAL_PORT, () => {
         console.log("Server listening at http://localhost:"+INTERNAL_PORT);
     });
