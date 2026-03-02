@@ -1,6 +1,4 @@
 const { Kafka } = require("kafkajs");
-const nodemailer = require("nodemailer");
-
 const kafka = new Kafka({
     clientId: "email-service",
     brokers: ["broker:29092"],
@@ -10,6 +8,7 @@ const kafka = new Kafka({
     }
 });
 
+const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
     port: 587,
@@ -18,6 +17,27 @@ const transporter = nodemailer.createTransport({
         pass: 'X8qz77aRNBJ1bu7fKS'
     }
 });
+
+const client = require('prom-client');
+const register = new client.Registry();
+
+register.setDefaultLabels({
+    app: 'email-service'
+})
+
+client.collectDefaultMetrics({ register });
+
+const emailsSent = new client.Counter({
+  name: 'sent_email_total',
+  help: 'Just a counter for total emails sent',
+  labelNames: ['key'],
+  registers: [register], 
+});
+
+
+const express = require('express');
+const app = express();
+
 
 function objectFromStringValue(messageValueString) {
     try {
@@ -40,6 +60,7 @@ async function handleUsersEmails(key, value) {
             text: "Hello, " + user.name + " (User Id: " + user.id + "),\n\nYour password has been changed, contact support if you did not initiate this change.",
             html: "<p>Hello, " + user.name + " (User Id: " + user.id + "),</p><b>Your password has been changed</b>, contact support if you did not initiate this change. ",
         });    
+        emailsSent.inc({ key: key });
     } else {
         console.log("Invalid message key provided, no notifications sent :(");
     }
@@ -54,7 +75,6 @@ async function handleTradesEmails(key, value) {
     let receiver = data.receiver;
     let receiverGame = data.receiverGame;
     if (key === "trade-created") {
-        
         
         await transporter.sendMail({
             from: 'The Video Game Exchange <johnathon.pfeffer59@ethereal.email>',
@@ -109,6 +129,8 @@ async function handleTradesEmails(key, value) {
     } else {
         console.log("Invalid message key provided, no notifications sent :(");
     }
+    emailsSent.inc({ key: key });
+    emailsSent.inc({ key: key });
 }
 
 
@@ -155,4 +177,16 @@ async function run() {
     startConsumer();
 }
 
+app.get('/metrics', async (req, res) => {
+    res.setHeader('Content-Type', register.contentType);
+    res.send(await register.metrics());
+});
+
+app.listen(8888, () => {
+    console.log(`Server listening on http://localhost:8888`);
+    console.log(`Metrics available at http://notifications:8888/metrics`);
+});
+
 run().catch(console.error);
+
+

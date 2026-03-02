@@ -2,7 +2,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const user = process.env.MONGO_USER
 const password = process.env.MONGO_PASSWORD
-const uri = `mongodb+srv://${user}:${password}@cluster0.h848i6m.mongodb.net/?appName=Cluster0`;
+const uri = `mongodb://${user}:${password}@mongodb:27017/?authSource=${user}`;
 
 const client = new MongoClient(uri, {
     serverApi: {

@@ -1,6 +1,11 @@
 const express = require("express");
 const app = express();
 
+const promClient = require('prom-client');
+promClient.collectDefaultMetrics();
+const metricsMiddleware  = require("express-prom-bundle")({includeMethod: true});
+app.use(metricsMiddleware);
+
 const { Kafka } = require("kafkajs");
 const kafka = new Kafka({ clientId: "api", 
     brokers: ["broker:29092"],
@@ -9,7 +14,7 @@ const kafka = new Kafka({ clientId: "api",
         initialRetryTime: 1000,
         retries: 15
     }
-    });
+});
 const producer = kafka.producer();
 
 const {dal, connectToDb, closeDb} = require("./dal/mongoDAL.js");
@@ -21,6 +26,11 @@ const PROXY_PORT = process.env.PROXY_PORT;
 
 app.use(express.urlencoded({extended : true}));
 app.use(express.json());
+
+const MISSING_BODY_RESPONSE = {
+    error : "Missing Body",
+    message : "Request must contain a body"
+}
 
 
 //#region /users endpoints
@@ -115,7 +125,8 @@ app.get("/users/:id/games", async (req, res) => {
 }); 
 
 app.post("/users", async (req, res) => {
-    let body = req.body;
+    let body = req.body; 
+    if(body == undefined) {return res.status(400).json({MISSING_BODY_RESPONSE})}
     console.log("Users POST body: ", body);
 
     let requiredFields = ["name", "email", "password", "address"];
@@ -154,7 +165,8 @@ app.post("/users", async (req, res) => {
 
 app.patch("/users/:id", async (req, res) => {
     let id = parseInt(req.params.id);
-    let body = req.body;
+    let body = req.body; 
+    if(body == undefined) {return res.status(400).json({MISSING_BODY_RESPONSE})}
     console.log("Users PATCH body: ", body);
 
     let name = body.name;
@@ -338,7 +350,8 @@ app.get("/games/:id", async (req, res) => {
 });
 
 app.post("/games", async (req, res) => {
-    let body = req.body;
+    let body = req.body; 
+    if(body == undefined) {return res.status(400).json({MISSING_BODY_RESPONSE})}
     console.log("Games POST body: ", body);
 
     let requiredFields = ["name", "publisher", "year", "system", "condition", "ownerId"];
@@ -388,7 +401,8 @@ app.post("/games", async (req, res) => {
 
 app.put("/games/:id", async (req, res) => {
     let id = parseInt(req.params.id);
-    let body = req.body;
+    let body = req.body; 
+    if(body == undefined) {return res.status(400).json({MISSING_BODY_RESPONSE})}
     console.log("Games PUT body: ", body);
 
     if (isNaN(id)) {
@@ -450,7 +464,8 @@ app.put("/games/:id", async (req, res) => {
 
 app.patch("/games/:id", async (req, res) => {
     let id = parseInt(req.params.id);
-    let body = req.body;
+    let body = req.body; 
+    if(body == undefined) {return res.status(400).json({MISSING_BODY_RESPONSE})}
     console.log("Games PATCH body: ", body);
 
     let name = body.name;
@@ -651,7 +666,8 @@ app.get("/trades/:id", async (req, res) => {
 
 // POST /trades - create new trade offer to another user -> Vaidating that both Users exist and own the respective games
 app.post("/trades", async (req, res) => {
-    let body = req.body;
+    let body = req.body; 
+    if(body == undefined) {return res.status(400).json({MISSING_BODY_RESPONSE})}
     console.log("Trades POST body: ", body);
 
     let senderId = body.senderId;
@@ -737,6 +753,7 @@ app.post("/trades", async (req, res) => {
     let result = await dal.createTrade(newTrade);
 
     if (result) {
+        // Refactoring here later, to account for cacheing
         let messageDataObj = {
             tradeId : result.id,
             sender : sender,
@@ -906,12 +923,7 @@ app.delete("/trades/:id", async (req, res) => {
 
 
 //TODO:
-// This will be added next Lab
-// We need to be able to send a user notifications when they receive an offer for a game ( sending them emails in this case )
-
-// Our API's are doing too much, and so we need to extract portions out into different services.
-// The notifications is one example, as this is not a concern that the API should handle
-// Excercise to do before Monday: Get a Kafka container up and running
+// Express Prometheus Middleware?? easy way to provide default-created metrics for 
 
 
 // TODO:
