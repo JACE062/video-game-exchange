@@ -2,7 +2,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const user = process.env.MONGO_USER
 const password = process.env.MONGO_PASSWORD
-const uri = `mongodb://${user}:${password}@mongodb:27017/?authSource=${user}`;
+const uri = `mongodb://${user}:${password}@mongo1:27017,mongo2:27017,mongo3:27017/videogameexchange?replicaSet=rs0&authSource=${user}&readPreference=primaryPreferred&retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, {
     serverApi: {
@@ -44,6 +44,16 @@ let dal = {
         user = await coll.findOne({ id: id });
 
         console.log("Get User by id results: ", user);
+        return user;
+    },
+    getUserByEmail: async function (email) {
+        console.log("Get User by email: ", email);
+
+        let user;
+        let coll = db.collection("Users");
+        user = await coll.findOne({ email: email });
+
+        console.log("Get User by email results: ", user);
         return user;
     },
     createUser: async function (newUser) {

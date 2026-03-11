@@ -7,6 +7,7 @@ let formatUsersList = function (usersList) {
         adjustedUser = {
             id : user.id,
             name : user.name,
+            address : user.address,
             link : {
                 url : `http://localhost:${PROXY_PORT}/users/${user.id}`,
                 method : "GET"
@@ -23,7 +24,10 @@ let formatGamesList = function (gamesList) {
         let adjustedGame = {
             id : game.id,
             name : game.name,
+            publisher : game.publisher,
             year : game.year,
+            system : game.system,
+            condition : game.condition,
             ownerId : game.ownerId,
             link : {
                 url : `http://localhost:${PROXY_PORT}/games/${game.id}`, 
@@ -45,18 +49,18 @@ let convertListToIdArray = function (list) {
 
 // TODO: Would be nicer to have the game information display, rather than just giving them the game id and expecting them to check each one by hand
 let formatTradesList = function (tradesList, gamesList) {
-    let gamesIdArray = convertListToIdArray(gamesList);
 
     let adjustedTradesList = [];
     for (trade of tradesList) {
         let adjustedTrade = {
             id : trade.id,
             senderId : trade.senderId,
-            senderGameName : gamesList[gamesIdArray.indexOf(trade.senderGameId)].name,
+            senderGameId : trade.senderGameId,
             receiverId : trade.receiverId,
-            receiverGameName : gamesList[gamesIdArray.indexOf(trade.receiverGameId)].name,
+            receiverGameId : trade.receiverGameId,
             status : trade.status,
-            created : trade.createdOn,
+            createdOn : trade.createdOn,
+            unixTimestamp : trade.unixTimestamp,
             link : {
                 url : `http://localhost:${PROXY_PORT}/trades/${trade.id}`, 
                 method : "GET"

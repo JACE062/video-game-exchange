@@ -34,6 +34,40 @@ const MISSING_BODY_RESPONSE = {
 
 
 //#region /users endpoints
+
+// Simple "Authentication" route created with Gemini
+// POST /users/login - Authenticate a user
+app.post('/users/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        // 1. FETCH USER FROM DB (Adjust this line to match your database logic)
+        const user = await dal.getUserByEmail(email);
+        
+        // 2. Validate user exists and password matches
+        if (!user || user.password !== password) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // 3. Format the user object to send back (Never send the password back!)
+        const safeUser = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            address: user.address,
+            link: {
+                url: `http://localhost:${PROXY_PORT}/users/${user.id}`,
+                method: "GET"
+            }
+        };
+
+        // 4. Return the safe user object inside the 'data' envelope
+        res.status(200).json({ data: safeUser });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get("/users", async (req, res) => {
     let fullDetailUsersList = await dal.getAllUsers();
     if (fullDetailUsersList.length > 0) {
@@ -279,10 +313,10 @@ app.get("/games", async (req, res) => {
         query.year = parseInt(req.query.year);
     }
     if (req.query.system) {
-        query.system = new RegExp(req.query.system, 'i');
+        query.system = new RegExp(`^${req.query.system}$`, 'i');
     }
     if (req.query.condition) {
-        query.condition = new RegExp(req.query.condition, 'i');
+        query.condition = new RegExp(`^${req.query.condition}$`, 'i');
     }
     if (req.query.ownerId && !isNaN(parseInt(req.query.ownerId))) {
         query.ownerId = parseInt(req.query.ownerId);
@@ -623,17 +657,16 @@ app.get("/trades/:id", async (req, res) => {
     let trade = await dal.getTradeById(id);
 
     if (trade) {
-        const {_id:mongoId1, ...senderGame} = await dal.getGameById(trade.senderGameId);
-        const {_id:mongoId2, ...receiverGame} = await dal.getGameById(trade.receiverGameId);
 
         let adjustedTrade = {   
             id : trade.id,
             senderId : trade.senderId,
-            senderGame : senderGame,
+            senderGameId : trade.senderGameId,
             receiverId : trade.receiverId,
-            receiverGame : receiverGame,
+            receiverGameId : trade.receiverGameId,
             status : trade.status,
-            created : trade.createdOn,
+            createdOn : trade.createdOn,
+            unixTimestamp : trade.unixTimestamp,
             links : [
                 {
                     url : `http://localhost:${PROXY_PORT}/trades/${trade.id}`,

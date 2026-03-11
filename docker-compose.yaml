@@ -7,8 +7,8 @@ services:
     deploy: 
       replicas: 3
     depends_on:
-      mongodb:
-        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
 
   nginx:
     container_name: nginx-server
@@ -22,24 +22,84 @@ services:
     networks:
       - distributed-network 
 
-  mongodb: # Port from cloud-hosted Atlas to local hosted container done with help from Gemini 3 Pro 
-    container_name: mongodb
+  # Mongo replication setup/configuration done with help from Gemini 3 Pro
+  mongo1:
+    container_name: mongo1
     image: mongo:latest
     restart: unless-stopped
     networks:
       - distributed-network
     ports:
       - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
-      - ./mongodb/data:/data/db 
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - ./mongodb/data1:/data/db
+    command: >
+      bash -c 'echo "dGhpc2lzYWZha2VrZXlmb3Jsb2NhbGRldmVsb3BtZW50b25seTEyMzQ1Njc4OTA=" > /tmp/mongo-keyfile &&
+      chmod 400 /tmp/mongo-keyfile &&
+      chown mongodb:mongodb /tmp/mongo-keyfile &&
+      exec mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile'
+
+  # Secondary Node 1
+  mongo2:
+    container_name: mongo2
+    image: mongo:latest
+    restart: unless-stopped
+    networks:
+      - distributed-network
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./mongodb/data2:/data/db
+    command: >
+      bash -c 'echo "dGhpc2lzYWZha2VrZXlmb3Jsb2NhbGRldmVsb3BtZW50b25seTEyMzQ1Njc4OTA=" > /tmp/mongo-keyfile &&
+      chmod 400 /tmp/mongo-keyfile &&
+      chown mongodb:mongodb /tmp/mongo-keyfile &&
+      exec mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile'
+
+  # Secondary Node 2
+  mongo3:
+    container_name: mongo3
+    image: mongo:latest
+    restart: unless-stopped
+    networks:
+      - distributed-network
+    ports:
+      - "27019:27017"
+    volumes:
+      - ./mongodb/data3:/data/db
+    command: >
+      bash -c 'echo "dGhpc2lzYWZha2VrZXlmb3Jsb2NhbGRldmVsb3BtZW50b25seTEyMzQ1Njc4OTA=" > /tmp/mongo-keyfile &&
+      chmod 400 /tmp/mongo-keyfile &&
+      chown mongodb:mongodb /tmp/mongo-keyfile &&
+      exec mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile'
+
+  # Initialization Service
+  mongo-init:
+    container_name: mongo-init
+    image: mongo:latest
+    network_mode: "service:mongo1"
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    command: >
+      bash -c "
+      echo 'Waiting for MongoDB to start...';
+      until mongosh --host localhost:27017 --eval 'db.adminCommand(\"ping\")' --quiet; do
+        sleep 2;
+      done;
+      
+      echo 'Initiating replica set...';
+      mongosh --host localhost:27017 --eval 'rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo1:27017\"}, {_id: 1, host: \"mongo2:27017\"}, {_id: 2, host: \"mongo3:27017\"}]})' --quiet;
+      
+      echo 'Waiting for primary election...';
+      sleep 10;
+      
+      echo 'Creating admin user...';
+      mongosh --host localhost:27017 --eval 'db.getSiblingDB(\"admin\").createUser({user: \"admin\", pwd: \"password\", roles: [{role: \"root\", db: \"admin\"}]})' --quiet;
+      
+      echo 'Replica set initialized and secured successfully!';
+      "
 
   broker:
     image: apache/kafka:latest
@@ -116,14 +176,15 @@ services:
     environment:
       - MONGODB_URI=mongodb://admin:password@mongodb:27017/?authSource=admin
     command:
-      - '--compatible-mode'
+      - '--mongodb.uri=mongodb://admin:password@mongo1:27017,mongo2:27017,mongo3:27017/admin?replicaSet=rs0'
+      - '--discovering-mode'
       - '--collect-all'
     networks:
       - distributed-network
     restart: unless-stopped
     depends_on:
-      mongodb:
-        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
 
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:1.5.1
